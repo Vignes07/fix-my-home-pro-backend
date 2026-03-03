@@ -7,9 +7,20 @@ import rateLimit from 'express-rate-limit';
 
 const app = express();
 
+// Trust proxy for rate limiting behind Vercel/Render load balancers
+app.set('trust proxy', 1);
+
 // Security Middlewares
 app.use(helmet());
-app.use(cors({ origin: process.env.CORS_ORIGIN || '*' }));
+
+const allowedOrigins = process.env.CORS_ORIGIN
+    ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
+    : '*';
+
+app.use(cors({
+    origin: allowedOrigins.includes('*') ? '*' : allowedOrigins,
+    credentials: true
+}));
 
 // Rate Limiting Config
 const apiLimiter = rateLimit({
