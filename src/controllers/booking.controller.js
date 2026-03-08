@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase.js';
+import { sendBookingNotificationToTechnician } from '../utils/mailer.js';
 
 export const bookingController = {
     // Create a new booking
@@ -11,10 +12,24 @@ export const bookingController = {
                 return res.status(400).json({ success: false, message: 'Missing required fields' });
             }
 
-            // Fetch the service details for pricing estimation
+            // Ensure user exists in the users table (handles users who registered before the DB insert fix)
+            const { data: existingUser } = await supabase.from('users').select('id').eq('id', customer_id).single();
+            if (!existingUser) {
+                const authUser = req.user; // from requireAuth middleware
+                await supabase.from('users').upsert([{
+                    id: customer_id,
+                    email: authUser?.email || '',
+                    full_name: authUser?.user_metadata?.full_name || '',
+                    phone: authUser?.user_metadata?.phone || authUser?.phone || '',
+                    user_type: 'customer',
+                    is_active: true,
+                }], { onConflict: 'id' });
+            }
+
+            // Fetch the service details for pricing estimation and email
             const { data: serviceData } = await supabase
                 .from('services')
-                .select('base_price')
+                .select('name, base_price')
                 .eq('id', service_id)
                 .single();
 
@@ -25,6 +40,7 @@ export const bookingController = {
                 .insert([{
                     customer_id,
                     service_id,
+                    technician_id: null,
                     booking_date,
                     booking_time,
                     booking_type: booking_type || 'scheduled',
@@ -36,6 +52,7 @@ export const bookingController = {
                 .single();
 
             if (error) throw error;
+
             res.status(201).json({ success: true, data });
         } catch (error) {
             next(error);
@@ -112,5 +129,67 @@ export const bookingController = {
         } catch (error) {
             next(error);
         }
-    }
+    },
+
+    // Technician responds to a job (accept/reject) with optimistic locking
+    respondToBooking: async (req, res, next) => {
+        try {
+            const { id } = req.params;
+            const { technician_id, action } = req.body; // action: 'accept' or 'reject'
+
+            if (!technician_id || !['accept', 'reject'].includes(action)) {
+                return res.status(400).json({ success: false, message: 'technician_id and action (accept/reject) required' });
+            }
+
+            if (action === 'reject') {
+                // For now, just acknowledge the rejection
+                return res.json({ success: true, message: 'Job rejected' });
+            }
+
+            // ACCEPT flow with optimistic locking:
+            // Only assign if technician_id is still NULL (no one else accepted yet)
+            const { data, error } = await supabase
+                .from('bookings')
+                .update({
+                    technician_id,
+                    status: 'technician_assigned',
+                    updated_at: new Date(),
+                })
+                .eq('id', id)
+                .is('technician_id', null) // Optimistic lock: only if not yet assigned
+                .select()
+                .single();
+
+            if (error || !data) {
+                return res.status(409).json({
+                    success: false,
+                    message: 'This job has already been accepted by another technician',
+                });
+            }
+
+            res.json({ success: true, data, message: 'Job accepted successfully' });
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    // Get available jobs for technicians (accepted bookings without technician assigned)
+    getAvailableJobs: async (req, res, next) => {
+        try {
+            const { data, error } = await supabase
+                .from('bookings')
+                .select(`
+                    *,
+                    services (name, base_price)
+                `)
+                .eq('status', 'accepted')
+                .is('technician_id', null)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            res.json({ success: true, data });
+        } catch (error) {
+            next(error);
+        }
+    },
 };

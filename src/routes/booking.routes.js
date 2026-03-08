@@ -116,4 +116,13 @@ router.get('/:id', bookingController.getBookingDetails);
  */
 router.patch('/:id/status', requireAuth, bookingController.updateBookingStatus);
 
+// Get available jobs for technicians (MUST be before /:id to avoid matching 'available' as an ID)
+router.get('/available/jobs', bookingController.getAvailableJobs);
+
+// Get single booking by ID
+router.get('/:id', bookingController.getBookingDetails);
+
+// Technician responds to a job
+router.post('/:id/respond', requireAuth, bookingController.respondToBooking);
+
 export default router;

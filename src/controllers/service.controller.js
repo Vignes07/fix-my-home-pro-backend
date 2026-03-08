@@ -68,7 +68,8 @@ export const serviceController = {
                 .from('services')
                 .select(`
                     *,
-                    service_categories (name)
+                    service_categories (name),
+                    service_options (*)
                 `)
                 .eq('id', id)
                 .single();

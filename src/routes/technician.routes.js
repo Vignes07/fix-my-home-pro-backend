@@ -1,41 +1,25 @@
 import express from 'express';
 import { technicianController } from '../controllers/technician.controller.js';
+import { requireAuth } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
 
-/**
- * @swagger
- * /technicians:
- *   get:
- *     summary: Retrieve list of approved technicians
- *     tags: [Technicians]
- *     parameters:
- *       - in: query
- *         name: city
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: List of technicians
- */
+// Public: get approved technicians
 router.get('/', technicianController.getTechnicians);
 
-/**
- * @swagger
- * /technicians/{id}:
- *   get:
- *     summary: Retrieve specific technician profile details
- *     tags: [Technicians]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Technician profile
- */
+// Public: get technician profile
 router.get('/:id', technicianController.getTechnicianProfile);
+
+// Technician: submit KYC
+router.post('/kyc/submit', requireAuth, technicianController.submitKyc);
+
+// Admin: get all technician applications
+router.get('/admin/applications', requireAuth, technicianController.getAllApplications);
+
+// Admin: update approval status
+router.patch('/admin/:id/status', requireAuth, technicianController.updateApprovalStatus);
+
+// Admin: get dashboard stats
+router.get('/admin/stats', requireAuth, technicianController.getAdminStats);
 
 export default router;
