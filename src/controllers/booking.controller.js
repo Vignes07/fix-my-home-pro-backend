@@ -192,4 +192,89 @@ export const bookingController = {
             next(error);
         }
     },
+
+    // ========== ADMIN ENDPOINTS ==========
+
+    // Get ALL bookings for admin with joined names
+    getAllBookingsAdmin: async (req, res, next) => {
+        try {
+            const { status, search } = req.query;
+            let query = supabase
+                .from('bookings')
+                .select(`
+                    *,
+                    services (name, base_price),
+                    users!bookings_customer_id_fkey (full_name, email, phone)
+                `)
+                .order('created_at', { ascending: false });
+
+            if (status && status !== 'all') {
+                query = query.eq('status', status);
+            }
+
+            const { data, error } = await query;
+            if (error) throw error;
+
+            // Enrich with technician name if assigned
+            const techIds = [...new Set((data || []).filter(b => b.technician_id).map(b => b.technician_id))];
+            let techMap = {};
+            if (techIds.length > 0) {
+                const { data: techs } = await supabase
+                    .from('technicians')
+                    .select('id, users(full_name)')
+                    .in('id', techIds);
+                (techs || []).forEach(t => {
+                    techMap[t.id] = t.users?.full_name || 'Unknown';
+                });
+            }
+
+            let enriched = (data || []).map(b => ({
+                ...b,
+                service_name: b.services?.name || 'Unknown',
+                customer_name: b.users?.full_name || 'Unknown',
+                customer_email: b.users?.email || '',
+                customer_phone: b.users?.phone || '',
+                technician_name: b.technician_id ? (techMap[b.technician_id] || 'Assigned') : 'Unassigned',
+                amount: b.estimated_price || b.services?.base_price || 0,
+            }));
+
+            // Client-side search filter
+            if (search) {
+                const s = search.toLowerCase();
+                enriched = enriched.filter(b =>
+                    b.service_name.toLowerCase().includes(s) ||
+                    b.customer_name.toLowerCase().includes(s) ||
+                    b.customer_email.toLowerCase().includes(s)
+                );
+            }
+
+            res.json({ success: true, data: enriched });
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    // Admin update booking (status, cancel, etc.)
+    updateBookingAdmin: async (req, res, next) => {
+        try {
+            const { id } = req.params;
+            const { status, cancellation_reason } = req.body;
+
+            const updates = { updated_at: new Date() };
+            if (status) updates.status = status;
+            if (cancellation_reason) updates.cancellation_reason = cancellation_reason;
+
+            const { data, error } = await supabase
+                .from('bookings')
+                .update(updates)
+                .eq('id', id)
+                .select()
+                .single();
+
+            if (error) throw error;
+            res.json({ success: true, data });
+        } catch (error) {
+            next(error);
+        }
+    },
 };

@@ -68,6 +68,13 @@ router.post('/', requireAuth, bookingController.createBooking);
  */
 router.get('/', bookingController.getBookings);
 
+// ========== ADMIN ROUTES (must be before /:id) ==========
+router.get('/admin/all', requireAuth, bookingController.getAllBookingsAdmin);
+router.patch('/admin/:id', requireAuth, bookingController.updateBookingAdmin);
+
+// Get available jobs for technicians (MUST be before /:id)
+router.get('/available/jobs', bookingController.getAvailableJobs);
+
 /**
  * @swagger
  * /bookings/{id}:
@@ -115,12 +122,6 @@ router.get('/:id', bookingController.getBookingDetails);
  *         description: Unauthorized
  */
 router.patch('/:id/status', requireAuth, bookingController.updateBookingStatus);
-
-// Get available jobs for technicians (MUST be before /:id to avoid matching 'available' as an ID)
-router.get('/available/jobs', bookingController.getAvailableJobs);
-
-// Get single booking by ID
-router.get('/:id', bookingController.getBookingDetails);
 
 // Technician responds to a job
 router.post('/:id/respond', requireAuth, bookingController.respondToBooking);
