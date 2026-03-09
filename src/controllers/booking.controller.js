@@ -44,7 +44,7 @@ export const bookingController = {
                     booking_date,
                     booking_time,
                     booking_type: booking_type || 'scheduled',
-                    status: 'pending',
+                    status: 'searching',
                     customer_address,
                     estimated_price
                 }])
@@ -66,7 +66,8 @@ export const bookingController = {
             let query = supabase.from('bookings').select(`
                 *,
                 services (name, base_price),
-                users!customer_id (full_name, phone)
+                users!customer_id (full_name, phone),
+                technicians (users (full_name, phone, profile_photo_url))
             `);
 
             if (customer_id) query = query.eq('customer_id', customer_id);
@@ -173,7 +174,7 @@ export const bookingController = {
         }
     },
 
-    // Get available jobs for technicians (accepted bookings without technician assigned)
+    // Get available jobs for technicians (searching bookings without technician assigned)
     getAvailableJobs: async (req, res, next) => {
         try {
             const { data, error } = await supabase
@@ -182,7 +183,7 @@ export const bookingController = {
                     *,
                     services (name, base_price)
                 `)
-                .eq('status', 'accepted')
+                .eq('status', 'searching')
                 .is('technician_id', null)
                 .order('created_at', { ascending: false });
 
@@ -258,11 +259,12 @@ export const bookingController = {
     updateBookingAdmin: async (req, res, next) => {
         try {
             const { id } = req.params;
-            const { status, cancellation_reason } = req.body;
+            const { status, cancellation_reason, technician_id } = req.body;
 
             const updates = { updated_at: new Date() };
             if (status) updates.status = status;
             if (cancellation_reason) updates.cancellation_reason = cancellation_reason;
+            if (technician_id !== undefined) updates.technician_id = technician_id;
 
             const { data, error } = await supabase
                 .from('bookings')

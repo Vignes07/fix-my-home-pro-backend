@@ -209,4 +209,90 @@ export const serviceController = {
             next(error);
         }
     },
+
+    // ========== ADMIN CATEGORY ENDPOINTS ==========
+
+    createCategory: async (req, res, next) => {
+        try {
+            const { name, description, icon_name, is_active, display_order } = req.body;
+
+            if (!name) {
+                return res.status(400).json({ success: false, message: 'Name is required' });
+            }
+
+            const { data, error } = await supabase
+                .from('service_categories')
+                .insert([{
+                    name,
+                    description: description || '',
+                    icon_name: icon_name || 'Tool',
+                    is_active: is_active !== false,
+                    display_order: display_order || 0
+                }])
+                .select()
+                .single();
+
+            if (error) throw error;
+            res.status(201).json({ success: true, data });
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    updateCategory: async (req, res, next) => {
+        try {
+            const { id } = req.params;
+            const allowed = ['name', 'description', 'icon_name', 'is_active', 'display_order'];
+            const updates = {};
+            for (const key of allowed) {
+                if (req.body[key] !== undefined) updates[key] = req.body[key];
+            }
+
+            const { data, error } = await supabase
+                .from('service_categories')
+                .update(updates)
+                .eq('id', id)
+                .select()
+                .single();
+
+            if (error) throw error;
+            res.json({ success: true, data });
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    deleteCategory: async (req, res, next) => {
+        try {
+            const { id } = req.params;
+
+            // Check if category has services
+            const { data: services } = await supabase
+                .from('services')
+                .select('id')
+                .eq('category_id', id)
+                .limit(1);
+
+            if (services && services.length > 0) {
+                // Soft delete — set inactive
+                const { error } = await supabase
+                    .from('service_categories')
+                    .update({ is_active: false })
+                    .eq('id', id);
+                if (error) throw error;
+                return res.json({ success: true, message: 'Category deactivated (contains existing services)' });
+            }
+
+            // Hard delete
+            const { error } = await supabase
+                .from('service_categories')
+                .delete()
+                .eq('id', id);
+
+            if (error) throw error;
+            res.json({ success: true, message: 'Category deleted' });
+        } catch (error) {
+            next(error);
+        }
+    }
 };

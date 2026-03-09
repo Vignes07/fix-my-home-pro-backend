@@ -4,22 +4,70 @@ import { requireAuth } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
 
-// Public: get approved technicians
-router.get('/', technicianController.getTechnicians);
+/**
+ * @swagger
+ * /technicians:
+ *   post:
+ *     summary: Submit KYC for a technician
+ *     tags: [Technicians]
+ *     responses:
+ *       201:
+ *         description: KYC submitted
+ */
+router.post('/', requireAuth, technicianController.submitKyc);
 
-// Public: get technician profile
-router.get('/:id', technicianController.getTechnicianProfile);
+/**
+ * @swagger
+ * /technicians/me:
+ *   get:
+ *     summary: Get current technician profile
+ *     tags: [Technicians]
+ *     responses:
+ *       200:
+ *         description: Technician profile
+ */
+router.get('/me', requireAuth, technicianController.getMyProfile);
 
-// Technician: submit KYC
-router.post('/kyc/submit', requireAuth, technicianController.submitKyc);
-
-// Admin: get all technician applications
+/**
+ * @swagger
+ * /technicians/admin/applications:
+ *   get:
+ *     summary: Get all applications (Admin)
+ *     tags: [Technicians]
+ *     responses:
+ *       200:
+ *         description: List of all applications
+ */
 router.get('/admin/applications', requireAuth, technicianController.getAllApplications);
 
-// Admin: update approval status
-router.patch('/admin/:id/status', requireAuth, technicianController.updateApprovalStatus);
-
-// Admin: get dashboard stats
+/**
+ * @swagger
+ * /technicians/admin/stats:
+ *   get:
+ *     summary: Get dashboard stats (Admin)
+ *     tags: [Technicians]
+ *     responses:
+ *       200:
+ *         description: Stats returned
+ */
 router.get('/admin/stats', requireAuth, technicianController.getAdminStats);
+
+/**
+ * @swagger
+ * /technicians/{id}/status:
+ *   patch:
+ *     summary: Update technician verification status
+ *     tags: [Technicians]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Status updated
+ */
+router.patch('/:id/status', requireAuth, technicianController.updateApprovalStatus);
 
 export default router;

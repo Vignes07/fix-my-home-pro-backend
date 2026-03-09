@@ -23,6 +23,33 @@ export const technicianController = {
         }
     },
 
+    // Get current technician profile
+    getMyProfile: async (req, res, next) => {
+        try {
+            const user_id = req.user.id;
+            const { data, error } = await supabase
+                .from('technicians')
+                .select(`
+                    *,
+                    users (full_name, email, phone, profile_photo_url)
+                `)
+                .eq('user_id', user_id)
+                .single();
+
+            if (error && error.code !== 'PGRST116') { // PGRST116 is 'not found'
+                throw error;
+            }
+
+            if (!data) {
+                return res.json({ success: true, data: null, message: 'No technician profile found' });
+            }
+
+            res.json({ success: true, data });
+        } catch (error) {
+            next(error);
+        }
+    },
+
     // Get technician profile
     getTechnicianProfile: async (req, res, next) => {
         try {
@@ -35,7 +62,8 @@ export const technicianController = {
                     technician_services (
                         experience_years,
                         services (name, base_price, category_id)
-                    )
+                    ),
+                    bookings (id, status, scheduled_date, estimated_price, service_id, users(full_name))
                 `)
                 .eq('id', id)
                 .single();
