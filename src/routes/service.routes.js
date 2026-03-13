@@ -14,6 +14,12 @@ router.post('/admin/categories', requireAuth, serviceController.createCategory);
 router.patch('/admin/categories/:id', requireAuth, serviceController.updateCategory);
 router.delete('/admin/categories/:id', requireAuth, serviceController.deleteCategory);
 
+// Service options (types) CRUD
+router.get('/admin/:serviceId/options', requireAuth, serviceController.getServiceOptions);
+router.post('/admin/:serviceId/options', requireAuth, serviceController.createServiceOption);
+router.patch('/admin/options/:optionId', requireAuth, serviceController.updateServiceOption);
+router.delete('/admin/options/:optionId', requireAuth, serviceController.deleteServiceOption);
+
 // ========== PUBLIC ROUTES ==========
 /**
  * @swagger

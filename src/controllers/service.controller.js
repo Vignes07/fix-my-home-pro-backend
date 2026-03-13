@@ -124,7 +124,7 @@ export const serviceController = {
     // Create a new service
     createService: async (req, res, next) => {
         try {
-            const { name, category_id, description, base_price, estimated_duration, is_active, image_url } = req.body;
+            const { name, category_id, description, base_price, estimated_duration, is_active, image_url, thumbnail_url, detail_image_url } = req.body;
 
             if (!name || !category_id || !base_price) {
                 return res.status(400).json({ success: false, message: 'name, category_id, and base_price are required' });
@@ -139,7 +139,9 @@ export const serviceController = {
                     base_price,
                     estimated_duration: estimated_duration || 60,
                     is_active: is_active !== false,
-                    image_url: image_url || null,
+                    image_url: thumbnail_url || image_url || null,
+                    thumbnail_url: thumbnail_url || null,
+                    detail_image_url: detail_image_url || null,
                 }])
                 .select('*, service_categories(name)')
                 .single();
@@ -156,7 +158,7 @@ export const serviceController = {
         try {
             const { id } = req.params;
             const updates = {};
-            const allowed = ['name', 'category_id', 'description', 'base_price', 'estimated_duration', 'is_active', 'image_url'];
+            const allowed = ['name', 'category_id', 'description', 'base_price', 'estimated_duration', 'is_active', 'image_url', 'thumbnail_url', 'detail_image_url'];
             for (const key of allowed) {
                 if (req.body[key] !== undefined) updates[key] = req.body[key];
             }
@@ -291,6 +293,95 @@ export const serviceController = {
 
             if (error) throw error;
             res.json({ success: true, message: 'Category deleted' });
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    // ========== ADMIN SERVICE OPTIONS ENDPOINTS ==========
+
+    // Get options for a service
+    getServiceOptions: async (req, res, next) => {
+        try {
+            const { serviceId } = req.params;
+            const { data, error } = await supabase
+                .from('service_options')
+                .select('*')
+                .eq('service_id', serviceId)
+                .order('created_at');
+
+            if (error) throw error;
+            res.json({ success: true, data: data || [] });
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    // Create a service option
+    createServiceOption: async (req, res, next) => {
+        try {
+            const { serviceId } = req.params;
+            const { name, description, price, estimated_duration, includes } = req.body;
+
+            if (!name || !price) {
+                return res.status(400).json({ success: false, message: 'name and price are required' });
+            }
+
+            const { data, error } = await supabase
+                .from('service_options')
+                .insert([{
+                    service_id: serviceId,
+                    name,
+                    description: description || '',
+                    price,
+                    estimated_duration: estimated_duration || 60,
+                    includes: includes || [],
+                }])
+                .select()
+                .single();
+
+            if (error) throw error;
+            res.status(201).json({ success: true, data });
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    // Update a service option
+    updateServiceOption: async (req, res, next) => {
+        try {
+            const { optionId } = req.params;
+            const updates = {};
+            const allowed = ['name', 'description', 'price', 'estimated_duration', 'includes'];
+            for (const key of allowed) {
+                if (req.body[key] !== undefined) updates[key] = req.body[key];
+            }
+
+            const { data, error } = await supabase
+                .from('service_options')
+                .update(updates)
+                .eq('id', optionId)
+                .select()
+                .single();
+
+            if (error) throw error;
+            res.json({ success: true, data });
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    // Delete a service option
+    deleteServiceOption: async (req, res, next) => {
+        try {
+            const { optionId } = req.params;
+            const { error } = await supabase
+                .from('service_options')
+                .delete()
+                .eq('id', optionId);
+
+            if (error) throw error;
+            res.json({ success: true, message: 'Option deleted' });
         } catch (error) {
             next(error);
         }
