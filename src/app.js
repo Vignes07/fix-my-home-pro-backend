@@ -63,6 +63,7 @@ import userRoutes from './routes/user.routes.js';
 import healthRoute from './routes/health.routes.js';
 import paymentRoutes from './routes/payment.routes.js';
 import contentRoutes from './routes/content.routes.js';
+import addressRoutes from './routes/address.routes.js';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/bookings', bookingRoutes);
@@ -73,6 +74,7 @@ app.use('/api/health', healthRoute);
 app.use('/api/services', serviceRoutes);
 app.use('/api/technicians', technicianRoutes);
 app.use('/api/content', contentRoutes);
+app.use('/api/addresses', addressRoutes);
 
 
 

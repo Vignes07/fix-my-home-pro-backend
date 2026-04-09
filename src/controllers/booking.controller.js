@@ -16,14 +16,18 @@ export const bookingController = {
             const { data: existingUser } = await supabase.from('users').select('id').eq('id', customer_id).single();
             if (!existingUser) {
                 const authUser = req.user; // from requireAuth middleware
-                await supabase.from('users').upsert([{
-                    id: customer_id,
-                    email: authUser?.email || '',
-                    full_name: authUser?.user_metadata?.full_name || '',
-                    phone: authUser?.user_metadata?.phone || authUser?.phone || '',
-                    user_type: 'customer',
-                    is_active: true,
-                }], { onConflict: 'id' });
+                try {
+                    await supabase.from('users').upsert([{
+                        id: customer_id,
+                        email: authUser?.email || 'unknown@user.com',
+                        full_name: authUser?.user_metadata?.full_name || 'Customer',
+                        phone: authUser?.user_metadata?.phone || authUser?.phone || '0000000000',
+                        user_type: 'customer',
+                        is_active: true,
+                    }], { onConflict: 'id' });
+                } catch (upsertErr) {
+                    console.log('[Booking] User upsert warning:', upsertErr.message);
+                }
             }
 
             // Fetch the service details for pricing estimation and email
@@ -44,7 +48,7 @@ export const bookingController = {
                     booking_date,
                     booking_time,
                     booking_type: booking_type || 'scheduled',
-                    status: 'searching',
+                    status: 'pending',
                     customer_address,
                     estimated_price
                 }])

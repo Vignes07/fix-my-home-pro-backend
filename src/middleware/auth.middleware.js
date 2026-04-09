@@ -29,6 +29,34 @@ export const requireAuth = async (req, res, next) => {
             });
         }
 
+        // Sync to public.users to prevent Foreign Key constraint errors 
+        const { data: existingUser } = await supabase
+            .from('users')
+            .select('id')
+            .eq('id', user.id)
+            .maybeSingle();
+
+        if (!existingUser) {
+            let tempPhone = Math.floor(1000000000 + Math.random() * 9000000000).toString(); // 10 digit random fallback
+            const meta = user.user_metadata || {};
+            
+            let insertData = {
+                id: user.id,
+                email: user.email,
+                full_name: meta.full_name || user.email?.split('@')[0] || 'User',
+                phone: meta.phone || tempPhone,
+                user_type: (meta.user_type === 'customer' || meta.user_type === 'technician' || meta.user_type === 'admin') ? meta.user_type : 'customer'
+            };
+
+            const { error: insertErr } = await supabase.from('users').insert(insertData);
+            
+            // If phone conflict (e.g user deleted in auth but not in public table), force a fake phone so they can use the app
+            if (insertErr && insertErr.message?.includes('violates unique constraint')) {
+                insertData.phone = tempPhone;
+                await supabase.from('users').insert(insertData);
+            }
+        }
+
         // Attach the authenticated user to the request object
         req.user = user;
         next();

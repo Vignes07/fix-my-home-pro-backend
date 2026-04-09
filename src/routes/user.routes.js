@@ -4,6 +4,11 @@ import { userController } from '../controllers/user.controller.js';
 
 const router = express.Router();
 
+// ========== AUTHENTICATED USER ROUTES ==========
+router.get('/profile', requireAuth, userController.getProfile);
+router.patch('/profile', requireAuth, userController.updateProfile);
+
+
 /**
  * @swagger
  * /users/admin:
